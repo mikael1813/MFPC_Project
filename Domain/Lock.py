@@ -1,5 +1,5 @@
 from enum import Enum
-from Transaction import Transactions
+from Transaction import Transaction
 
 
 class Type(Enum):
@@ -22,7 +22,7 @@ class Table(Enum):
 
 
 class Lock:
-    def __init__(self, lock_id: int, type: Type, record: Record, table: Table, transaction: Transactions):
+    def __init__(self, lock_id: int, type: Type, record: Record, table: Table, transaction: Transaction):
         self.lock_id = lock_id
         self.type = type
         self.record = record
