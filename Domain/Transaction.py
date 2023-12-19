@@ -1,4 +1,5 @@
 from enum import Enum
+from Operation import Operation
 
 
 class Status(Enum):
@@ -8,7 +9,7 @@ class Status(Enum):
 
 
 class Transaction:
-    def __init__(self, transaction_id: int, timestamp, status: Status, list_of_operations: [str]):
+    def __init__(self, transaction_id: int, timestamp, status: Status, list_of_operations: [Operation]):
         self.transaction_id = transaction_id
         self.timestamp = timestamp
         self.status = status
