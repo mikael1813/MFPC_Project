@@ -28,3 +28,5 @@ class Lock:
         self.record = record
         self.table = table
         self.transaction = transaction
+        # make sum of 2 numbers
+
