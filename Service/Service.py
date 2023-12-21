@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 
+from Domain.constants import users, user, books, book, borrowed_book, borrowed_books
 from Repository.BookDatabase import BookDatabase
 from Repository.UserDatabase import UserDatabase
 from Domain.DeadLockPreventionGraph import DeadLockPreventionGraph
@@ -70,7 +71,7 @@ class Service:
 
             while transaction.status == Status.ACTIVE:
                 if self.try_to_acquire_lock(operation, transaction):
-                    pass
+                    self.start_operation(operation, transaction)
                     successful_operations.append(operation.get_inverse_operation())
                     break
                 time.sleep(1)
@@ -86,15 +87,46 @@ class Service:
         operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=user_id)
         operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=book_id)
         operation3 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.SELECT, object=(user_id, book_id))
-        operation4 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.UPDATE, object=None,
-                               prev_object=UserBorrowedBook(user_id, book_id, return_date=datetime.now()))
+        operation4 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.UPDATE,
+                               object=UserBorrowedBook(user_id, book_id, return_date=datetime.now()),
+                               prev_object=None)
         operation5 = Operation(Table.USER, Record.USER_FINE, OperationType.ADD)
 
-    def start_operation(self, operation):
+    def start_operation(self, operation, transaction):
         if operation.record == Record.USER:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:
-                    return self.get_all_users()
+                    transaction.data_dict[users] = self.get_all_users()
+                else:
+                    transaction.data_dict[user] = self.get_user(operation.object)
+        elif operation.record == Record.BOOK:
+            if operation.operation_type == OperationType.SELECT:
+                if operation.object is None:
+                    transaction.data_dict[books] = self.get_all_books()
+                else:
+                    transaction.data_dict[book] = self.get_book(operation.object)
+        if operation.record == Record.USER_BORROWED_BOOK:
+            if operation.operation_type == OperationType.SELECT:
+                if operation.object is None:
+                    pass
+                    # transaction.data_dict[borrowed_books] = self.get_all_users()
+                else:
+                    transaction.data_dict[borrowed_book] = self.get_borrowed_book(operation.object[0],
+                                                                                  operation.object[1])
+            elif operation.operation_type == OperationType.UPDATE:
+                pass
 
     def get_all_users(self):
         return self.user_db.get_users()
+
+    def get_user(self, user_id):
+        return self.user_db.get_user_by_id(user_id)
+
+    def get_all_books(self):
+        return self.book_db.get_books()
+
+    def get_book(self, book_id):
+        return self.book_db.get_book_by_id(book_id)
+
+    def get_borrowed_book(self, user_id, book_id):
+        return self.user_db.get_borrow_of_book(user_id, book_id)

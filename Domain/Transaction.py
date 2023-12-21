@@ -14,3 +14,4 @@ class Transaction:
         self.timestamp = timestamp
         self.status = status
         self.list_of_operations = list_of_operations
+        self.data_dict = {}

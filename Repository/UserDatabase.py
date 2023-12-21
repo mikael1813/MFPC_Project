@@ -69,6 +69,13 @@ class UserDatabase:
         cursor.close()
         return result
 
+    def get_user_by_id(self, user_id):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM users WHERE user_id = ?;", (user_id,))
+        result = cursor.fetchall()
+        cursor.close()
+        return result[0]
+
     def add_user_borrowed_book(self, user_borrowed_book: UserBorrowedBook):
         cursor = self.connection.cursor()
 
