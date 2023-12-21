@@ -1,4 +1,5 @@
 from enum import Enum
+from Domain.Lock import LockType
 
 
 class Record(Enum):
@@ -23,19 +24,24 @@ class OperationType(Enum):
 
 
 class Operation:
-    def __init__(self, table, record, type, object=None, prev_object=None):
+    def __init__(self, table, record, operation_type, object=None, prev_object=None):
         self.table = table
         self.record = record
-        self.type = type
+        self.operation_type = operation_type
+
+        self.lock_type = LockType.WRITE
+        if self.operation_type == OperationType.SELECT:
+            self.lock_type = LockType.READ
+
         self.object = object
         self.prev_object = prev_object
 
     def get_inverse_operation(self):
-        if self.type == OperationType.ADD:
+        if self.operation_type == OperationType.ADD:
             inverse_operation_type = OperationType.DELETE
-        elif self.type == OperationType.UPDATE:
+        elif self.operation_type == OperationType.UPDATE:
             inverse_operation_type = OperationType.UPDATE
-        elif self.type == OperationType.DELETE:
+        elif self.operation_type == OperationType.DELETE:
             inverse_operation_type = OperationType.ADD
         else:
             inverse_operation_type = None

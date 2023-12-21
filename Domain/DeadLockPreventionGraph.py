@@ -1,6 +1,5 @@
-from Lock import LockType
-from Operation import Table, Record
-from Transaction import Transaction
+
+from Domain.Transaction import Transaction
 
 
 class DeadLockPreventionGraph:
@@ -32,16 +31,20 @@ class DeadLockPreventionGraph:
             # for neighbor in self.adjacency_dict[vertex]:
             neighbor = self.adjacency_dict[vertex]
             if neighbor is not None and neighbor not in visited:
-                if is_cyclic_helper(neighbor):
-                    return neighbor
+                output_list = is_cyclic_helper(neighbor)
+                if output_list is not False:
+                    output_list.append(neighbor)
+                    return output_list
             elif neighbor in stack:
-                return True
+                return []
             stack.remove(vertex)
             return False
 
         for vertex in self.adjacency_dict:
             if vertex not in visited:
                 output = is_cyclic_helper(vertex)
+                if output is not False:
+                    output.append(vertex)
                 if output:
                     return output
         return False
@@ -53,9 +56,10 @@ if __name__ == '__main__':
     t3 = Transaction(3, 0, 0, 0)
     t4 = Transaction(4, 0, 0, 0)
     graph = DeadLockPreventionGraph()
-    graph.add_node(t1, t2)
+    # graph.add_node(t1, t4)
     graph.add_node(t2, t3)
     graph.add_node(t3, t4)
     graph.add_node(t4, t1)
     xx = graph.is_cyclic()
+    print(xx)
     x = 0

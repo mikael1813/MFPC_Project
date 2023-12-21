@@ -1,5 +1,5 @@
 from enum import Enum
-from Operation import Operation
+from Domain.Operation import Operation
 
 
 class Status(Enum):

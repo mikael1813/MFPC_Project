@@ -34,6 +34,7 @@ class UserDatabase:
                 user_id INTEGER NOT NULL,
                 book_id INTEGER NOT NULL,
                 borrow_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                due_date TIMESTAMP DEFAULT (datetime(CURRENT_TIMESTAMP, '+30 days')),
                 return_date TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users (user_id)
             )""")
@@ -70,10 +71,42 @@ class UserDatabase:
 
     def add_user_borrowed_book(self, user_borrowed_book: UserBorrowedBook):
         cursor = self.connection.cursor()
-        cursor.execute("INSERT INTO user_borrowed_book (user_id, book_id, return_date) VALUES (?, ?, ?);",
-                       (user_borrowed_book.user_id, user_borrowed_book.book_id, user_borrowed_book.return_date))
+
+        query_values = "(user_id, book_id"
+        query_data = "(?, ?"
+        parameters = (user_borrowed_book.user_id, user_borrowed_book.book_id)
+
+        if user_borrowed_book.borrow_date is not None:
+            query_values += ", borrow_date"
+            query_data += ", ?"
+            parameters += (user_borrowed_book.borrow_date,)
+        if user_borrowed_book.due_date is not None:
+            query_values += ", due_date"
+            query_data += ", ?"
+            parameters += (user_borrowed_book.due_date,)
+        if user_borrowed_book.return_date is not None:
+            query_values += ", return_date"
+            query_data += ", ?"
+            parameters += (user_borrowed_book.return_date,)
+
+        cursor.execute(f"INSERT INTO user_borrowed_book {query_values}) VALUES {query_data});", parameters)
+
         self.connection.commit()
         cursor.close()
+
+    def get_borrow_of_book(self, user_id, book_id):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM user_borrowed_book WHERE user_id = ? AND book_id = ?", (user_id, book_id))
+        result = cursor.fetchall()
+        cursor.close()
+        return result
+
+    def get_user_borrows_book(self):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM user_borrowed_book;")
+        result = cursor.fetchall()
+        cursor.close()
+        return result
 
     def add_user_fine(self, user_fine: UserFine):
         cursor = self.connection.cursor()
@@ -81,3 +114,10 @@ class UserDatabase:
                        (user_fine.user_id, user_fine.fine_amount, user_fine.fine_description))
         self.connection.commit()
         cursor.close()
+
+    def get_users_fines(self):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM user_fines;")
+        result = cursor.fetchall()
+        cursor.close()
+        return result
