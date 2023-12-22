@@ -49,8 +49,8 @@ class BookDatabase:
 
     def add_book(self, book: Book):
         cursor = self.connection.cursor()
-        cursor.execute("INSERT INTO books (title, author_id, isbn, publish_year, genre, total_copies, "
-                       "available_copies) VALUES (?, ?, ?, ?, ?, ?, ?);",
+        cursor.execute("INSERT INTO books (title, author_id, isbn, publish_year, genre, total_copies"
+                       ") VALUES (?, ?, ?, ?, ?, ?);",
                        (book.title, book.author_id, book.isbn, book.publish_year, book.genre, book.total_copies))
         self.connection.commit()
         cursor.close()

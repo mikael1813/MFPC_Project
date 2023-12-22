@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 
-from Domain.constants import users, user, books, book, borrowed_book, borrowed_books
+from Domain.constants import users, user, books, book, borrowed_book, borrowed_books, returned_book
 from Repository.BookDatabase import BookDatabase
 from Repository.UserDatabase import UserDatabase
 from Domain.DeadLockPreventionGraph import DeadLockPreventionGraph
@@ -10,8 +10,9 @@ from Domain.UserBorrowedBook import UserBorrowedBook
 from Domain.Book import Book
 from Domain.UserFine import UserFine
 from Domain.Transaction import Transaction, Status
-from Domain.Lock import LockType, Lock
-from Domain.Operation import Operation, OperationType, Table, Record
+from Domain.Lock import Lock
+from Domain.Operation import Operation
+from Domain.Enums import Record, Table, OperationType, LockType
 
 
 class Service:
@@ -92,6 +93,10 @@ class Service:
                                prev_object=None)
         operation5 = Operation(Table.USER, Record.USER_FINE, OperationType.ADD)
 
+        list_of_operations = [operation1, operation2, operation3, operation4, operation5]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
     def start_operation(self, operation, transaction):
         if operation.record == Record.USER:
             if operation.operation_type == OperationType.SELECT:
@@ -105,7 +110,7 @@ class Service:
                     transaction.data_dict[books] = self.get_all_books()
                 else:
                     transaction.data_dict[book] = self.get_book(operation.object)
-        if operation.record == Record.USER_BORROWED_BOOK:
+        elif operation.record == Record.USER_BORROWED_BOOK:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:
                     pass
@@ -114,7 +119,16 @@ class Service:
                     transaction.data_dict[borrowed_book] = self.get_borrowed_book(operation.object[0],
                                                                                   operation.object[1])
             elif operation.operation_type == OperationType.UPDATE:
-                pass
+                operation.prev_object = transaction.data_dict[borrowed_book]
+                operation.object = transaction.data_dict[borrowed_book]
+                operation.object.return_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                transaction.data_dict[returned_book] = operation.object
+                self.update_borrow_book(operation.object)
+
+        elif operation.record == Record.USER_FINE:
+            if operation.operation_type == OperationType.ADD:
+                user_returned_book: UserBorrowedBook = transaction.data_dict[returned_book]
+                self.check_for_user_fine(user_returned_book)
 
     def get_all_users(self):
         return self.user_db.get_users()
@@ -130,3 +144,21 @@ class Service:
 
     def get_borrowed_book(self, user_id, book_id):
         return self.user_db.get_borrow_of_book(user_id, book_id)
+
+    def update_borrow_book(self, user_borrowed_book: UserBorrowedBook):
+        self.user_db.update_user_borrowed_book(user_borrowed_book)
+
+    def generate_transaction_id(self):
+        return len(self.list_of_transactions) + 1
+
+    def generate_lock_id(self):
+        return len(self.list_of_locks) + 1
+
+    def check_for_user_fine(self, user_borrowed_book: UserBorrowedBook):
+        return_date = datetime.strptime(user_borrowed_book.return_date, '%Y-%m-%d %H:%M:%S')
+        due_date = datetime.strptime(user_borrowed_book.due_date, '%Y-%m-%d %H:%M:%S')
+
+        if return_date > due_date:
+            days = (return_date - due_date).days + 1
+            fine = days * self.fine_rate
+            self.user_db.add_user_fine(UserFine(user_borrowed_book.user_id, fine, "Late " + str(days) + " days."))

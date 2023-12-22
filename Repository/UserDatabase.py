@@ -101,6 +101,30 @@ class UserDatabase:
         self.connection.commit()
         cursor.close()
 
+    def update_user_borrowed_book(self, user_borrowed_book: UserBorrowedBook):
+        cursor = self.connection.cursor()
+
+        query_values = ""
+        parameters = ()
+
+        if user_borrowed_book.borrow_date is not None:
+            query_values += "borrow_date = ?, "
+            parameters += (user_borrowed_book.borrow_date,)
+        if user_borrowed_book.due_date is not None:
+            query_values += "due_date = ?, "
+            parameters += (user_borrowed_book.due_date,)
+        if user_borrowed_book.return_date is not None:
+            query_values += "return_date = ?, "
+            parameters += (user_borrowed_book.return_date,)
+
+        query_values = query_values[:-2]
+        parameters += (user_borrowed_book.user_id, user_borrowed_book.book_id)
+
+        cursor.execute(f"UPDATE user_borrowed_book SET {query_values} WHERE user_id = ? AND book_id = ?;", parameters)
+
+        self.connection.commit()
+        cursor.close()
+
     def get_borrow_of_book(self, user_id, book_id):
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM user_borrowed_book WHERE user_id = ? AND book_id = ?", (user_id, book_id))
