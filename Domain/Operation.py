@@ -2,7 +2,7 @@ from Domain.Enums import OperationType, LockType
 
 
 class Operation:
-    def __init__(self, table, record, operation_type, object=None, prev_object=None):
+    def __init__(self, table, record, operation_type: OperationType, object=None, prev_object=None):
         self.table = table
         self.record = record
         self.operation_type = operation_type

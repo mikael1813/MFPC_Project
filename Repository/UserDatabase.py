@@ -67,14 +67,20 @@ class UserDatabase:
         cursor.execute("SELECT * FROM users;")
         result = cursor.fetchall()
         cursor.close()
-        return result
+        output_list = []
+        for user_tuple in result:
+            user = User(user_tuple[1], user_tuple[2], user_tuple[3], user_tuple[4], user_tuple[5],
+                        user_id=user_tuple[0])
+            output_list.append(user)
+        return output_list
 
     def get_user_by_id(self, user_id):
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM users WHERE user_id = ?;", (user_id,))
         result = cursor.fetchall()
         cursor.close()
-        return result[0]
+        user = User(result[0][1], result[0][2], result[0][3], result[0][4], result[0][5], user_id=result[0][0])
+        return user
 
     def add_user_borrowed_book(self, user_borrowed_book: UserBorrowedBook):
         cursor = self.connection.cursor()
@@ -130,14 +136,22 @@ class UserDatabase:
         cursor.execute("SELECT * FROM user_borrowed_book WHERE user_id = ? AND book_id = ?", (user_id, book_id))
         result = cursor.fetchall()
         cursor.close()
-        return result
+        borrow_of_book = UserBorrowedBook(result[0][1], result[0][2], borrow_date=result[0][3], due_date=result[0][4],
+                                          return_date=result[0][5], record_id=result[0][0])
+        return borrow_of_book
 
     def get_user_borrows_book(self):
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM user_borrowed_book;")
         result = cursor.fetchall()
         cursor.close()
-        return result
+        output_list = []
+        for user_borrow_tuple in result:
+            user_borrow = UserBorrowedBook(user_borrow_tuple[1], user_borrow_tuple[2], borrow_date=user_borrow_tuple[3],
+                                           due_date=user_borrow_tuple[4], return_date=user_borrow_tuple[5],
+                                           record_id=user_borrow_tuple[0])
+            output_list.append(user_borrow)
+        return output_list
 
     def add_user_fine(self, user_fine: UserFine):
         cursor = self.connection.cursor()
@@ -151,4 +165,9 @@ class UserDatabase:
         cursor.execute("SELECT * FROM user_fines;")
         result = cursor.fetchall()
         cursor.close()
-        return result
+        output_list = []
+        for user_fine_tuple in result:
+            user_fine = UserFine(user_fine_tuple[1], user_fine_tuple[2], user_fine_tuple[3], user_fine_tuple[4],
+                                 fine_id=user_fine_tuple[0])
+            output_list.append(user_fine)
+        return output_list

@@ -60,14 +60,19 @@ class BookDatabase:
         cursor.execute("SELECT * FROM books;")
         result = cursor.fetchall()
         cursor.close()
-        return result
+        output_list = []
+        for book in result:
+            output_list.append(Book(book[1], book[2], book[3], book[4], book[5], book[6], book_id=book[0]))
+        return output_list
 
     def get_book_by_id(self, book_id):
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM books WHERE book_id = ?;", (book_id,))
         result = cursor.fetchall()
         cursor.close()
-        return result[0]
+        book = Book(result[0][1], result[0][2], result[0][3], result[0][4], result[0][5], result[0][6],
+                    book_id=result[0][0])
+        return book
 
     def add_book_review(self, book_review: BookReview):
         cursor = self.connection.cursor()

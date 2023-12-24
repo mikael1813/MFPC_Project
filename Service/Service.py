@@ -37,9 +37,27 @@ class Service:
     def can_acquire_lock(self, operation: Operation):
         for lock in self.list_of_locks:
             if lock.record == operation.record and (
-                    lock.operation_type == LockType.WRITE or operation.lock_type == LockType.WRITE):
+                    lock.lock_type == LockType.WRITE or operation.lock_type == LockType.WRITE):
                 return False
         return True
+
+    def check_number_of_read_locks(self, record: Record):
+        number_of_read_locks = 0
+        for lock in self.list_of_locks:
+            if lock.record == record:
+                if lock.lock_type == LockType.WRITE:
+                    return False
+                else:
+                    number_of_read_locks += 1
+        if number_of_read_locks > 1:
+            return False
+        return True
+
+    def can_upgrade_lock(self, operation: Operation):
+        for lock in self.list_of_locks:
+            if lock.record == operation.record and self.check_number_of_read_locks(operation.record):
+                lock.lock_type = LockType.WRITE
+                return True
 
     def release_locks(self, transaction: Transaction):
         locks_to_be_released = []
@@ -61,7 +79,10 @@ class Service:
         # mutex
         if self.can_acquire_lock(operation):
             self.acquire_lock(operation, transaction)
-            # mutex
+
+            return True
+        elif self.can_upgrade_lock(operation):
+
             return True
         # mutex
         return False
