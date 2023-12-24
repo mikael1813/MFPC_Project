@@ -92,6 +92,7 @@ class Service:
         for operation in transaction.list_of_operations:
 
             while transaction.status == Status.ACTIVE:
+                # TODO if transaction is paused because it needs to wait add it to deadlock prevention graph
                 if self.try_to_acquire_lock(operation, transaction):
                     self.start_operation(operation, transaction)
                     successful_operations.append(operation.get_inverse_operation())
