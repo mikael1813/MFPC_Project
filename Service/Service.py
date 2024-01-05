@@ -1,18 +1,22 @@
+import threading
 import time
 from datetime import datetime
+from threading import Lock
 
-from Domain.constants import users, user, books, book, borrowed_book, borrowed_books, returned_book
-from Repository.BookDatabase import BookDatabase
-from Repository.UserDatabase import UserDatabase
+from Domain.Book import Book
+from Domain.CustomLock import CustomLock
 from Domain.DeadLockPreventionGraph import DeadLockPreventionGraph
+from Domain.Enums import Record, Table, OperationType, LockType
+from Domain.Operation import Operation
+from Domain.Transaction import Transaction, Status
 from Domain.User import User
 from Domain.UserBorrowedBook import UserBorrowedBook
-from Domain.Book import Book
 from Domain.UserFine import UserFine
-from Domain.Transaction import Transaction, Status
-from Domain.Lock import Lock
-from Domain.Operation import Operation
-from Domain.Enums import Record, Table, OperationType, LockType
+from Domain.constants import users, user, books, book, borrowed_book, returned_book
+from Repository.BookDatabase import BookDatabase
+from Repository.UserDatabase import UserDatabase
+
+mutex = Lock()
 
 
 class Service:
@@ -41,6 +45,14 @@ class Service:
                 return False
         return True
 
+    def get_blocking_transactions(self, operation: Operation):
+        list_of_blocking_transactions = []
+        for lock in self.list_of_locks:
+            if lock.record == operation.record and (
+                    lock.lock_type == LockType.WRITE or operation.lock_type == LockType.WRITE):
+                list_of_blocking_transactions.append(lock.transaction)
+        return list_of_blocking_transactions
+
     def check_number_of_read_locks(self, record: Record):
         number_of_read_locks = 0
         for lock in self.list_of_locks:
@@ -60,50 +72,69 @@ class Service:
                 return True
 
     def release_locks(self, transaction: Transaction):
-        locks_to_be_released = []
-        for lock in self.list_of_locks:
-            if lock.transaction == transaction:
-                locks_to_be_released.append(lock)
+        with mutex:
+            locks_to_be_released = []
+            for lock in self.list_of_locks:
+                if lock.transaction == transaction:
+                    locks_to_be_released.append(lock)
 
-        for lock in locks_to_be_released:
-            # mutex
-            self.list_of_locks.remove(lock)
-            # mutex
+            for lock in locks_to_be_released:
+                with mutex:
+                    self.list_of_locks.remove(lock)
 
     def acquire_lock(self, operation: Operation, transaction: Transaction):
         lock_id = self.generate_lock_id()
-        lock = Lock(lock_id, operation.lock_type, operation.record, operation.table, transaction)
+        lock = CustomLock(lock_id, operation.lock_type, operation.record, operation.table, transaction)
         self.list_of_locks.append(lock)
 
     def try_to_acquire_lock(self, operation: Operation, transaction: Transaction):
-        # mutex
-        if self.can_acquire_lock(operation):
-            self.acquire_lock(operation, transaction)
+        with mutex:
+            if self.can_acquire_lock(operation):
+                self.acquire_lock(operation, transaction)
 
-            return True
-        elif self.can_upgrade_lock(operation):
+                return True
+            elif self.can_upgrade_lock(operation):
 
-            return True
-        # mutex
+                return True
         return False
 
     def begin_transaction(self, transaction: Transaction):
         successful_operations = []
         for operation in transaction.list_of_operations:
-
-            while transaction.status == Status.ACTIVE:
+            # if operation.operation_type == OperationType.ADD:
+            #     time.sleep(10)
+            while True:
+                print(threading.currentThread())
                 # TODO if transaction is paused because it needs to wait add it to deadlock prevention graph
                 if self.try_to_acquire_lock(operation, transaction):
                     self.start_operation(operation, transaction)
                     successful_operations.append(operation.get_inverse_operation())
                     break
-                time.sleep(1)
+                else:
+                    # list_of_blocking_transactions = self.get_blocking_transactions(operation)
+                    # for blocking_transaction in list_of_blocking_transactions:
+                    #     with mutex:
+                    #         self.graph_for_deadlock_prevention.add_node(transaction, blocking_transaction)
+                    #
+                    # cyclic_nodes = self.graph_for_deadlock_prevention.is_cyclic(transaction)
+                    # if cyclic_nodes is not False and cyclic_nodes[0] == transaction.transaction_id:
+                    #     transaction.status = Status.ABORT
+                    #     break
+                    print(str(threading.currentThread()) + " can't acquire lock, waiting")
+                    time.sleep(1)
 
         if transaction.status == Status.ABORT:
             for operation in reversed(successful_operations):
-                pass
+                self.start_operation(operation, transaction)
+            self.release_locks(transaction)
+
+            time.sleep(1)
+
+            transaction.data_dict = {}
+            self.begin_transaction(transaction)
         else:
             transaction.status = Status.COMMIT
+            self.release_locks(transaction)
 
     def return_book(self, user_id, book_id):
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
@@ -119,6 +150,27 @@ class Service:
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
+    def dummy_transaction1(self):
+        self.book_db = BookDatabase()
+        self.user_db = UserDatabase()
+        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=1)
+        operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.ADD, object=Book(1, 1, 1, 1, 1, 1, book_id=99))
+        list_of_operations = [operation1, operation2]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def dummy_transaction2(self):
+        self.book_db = BookDatabase()
+        self.user_db = UserDatabase()
+        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=1)
+        operation2 = Operation(Table.USER, Record.USER, OperationType.ADD,
+                               object=User('2', '2', 'Aku', 'aaaa@gmail.com', '0744444444', user_id=99))
+        list_of_operations = [operation1, operation2]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
     def start_operation(self, operation, transaction):
         if operation.record == Record.USER:
             if operation.operation_type == OperationType.SELECT:
@@ -126,12 +178,16 @@ class Service:
                     transaction.data_dict[users] = self.get_all_users()
                 else:
                     transaction.data_dict[user] = self.get_user(operation.object)
+            elif operation.operation_type == OperationType.ADD:
+                self.user_db.add_user(operation.object)
         elif operation.record == Record.BOOK:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:
                     transaction.data_dict[books] = self.get_all_books()
                 else:
                     transaction.data_dict[book] = self.get_book(operation.object)
+            elif operation.operation_type == OperationType.ADD:
+                self.book_db.add_book(operation.object)
         elif operation.record == Record.USER_BORROWED_BOOK:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:

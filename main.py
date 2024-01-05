@@ -5,6 +5,8 @@ from Domain.Book import Book
 from Domain.UserBorrowedBook import UserBorrowedBook
 from Service.Service import Service
 
+from threading import Thread
+
 if __name__ == '__main__':
     book_db = BookDatabase()
     user_db = UserDatabase()
@@ -20,6 +22,13 @@ if __name__ == '__main__':
     # user_db.add_user_borrowed_book(UserBorrowedBook(1, 1, due_date='2023-12-15 10:05:23'))
 
     service = Service()
+    th1 = Thread(target=service.dummy_transaction1)
+    th2 = Thread(target=service.dummy_transaction2)
+    # th1.start()
+    # th2.start()
+    #
+    # th1.join()
+    # th2.join()
     # service.return_book(user.user_id, book.book_id)
     for user in user_db.get_users():
         print(user)
