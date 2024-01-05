@@ -23,6 +23,10 @@ class Service:
     def __init__(self):
         self.book_db = BookDatabase()
         self.user_db = UserDatabase()
+        # t1 = Transaction(1, 0, Status.ACTIVE, [])
+        # self.list_of_transactions = [t1]
+        # self.list_of_locks = [
+        #     CustomLock(1, LockType.READ, Record.BOOK, Table.BOOK, t1)]
         self.list_of_transactions = []
         self.list_of_locks = []
         self.graph_for_deadlock_prevention = DeadLockPreventionGraph()
@@ -65,9 +69,10 @@ class Service:
             return False
         return True
 
-    def can_upgrade_lock(self, operation: Operation):
+    def can_upgrade_lock(self, operation: Operation, transaction: Transaction):
         for lock in self.list_of_locks:
-            if lock.record == operation.record and self.check_number_of_read_locks(operation.record):
+            if (lock.record == operation.record and lock.transaction == transaction and
+                    self.check_number_of_read_locks(operation.record)):
                 lock.lock_type = LockType.WRITE
                 return True
 
@@ -79,21 +84,31 @@ class Service:
                     locks_to_be_released.append(lock)
 
             for lock in locks_to_be_released:
-                with mutex:
-                    self.list_of_locks.remove(lock)
+                self.list_of_locks.remove(lock)
 
     def acquire_lock(self, operation: Operation, transaction: Transaction):
         lock_id = self.generate_lock_id()
         lock = CustomLock(lock_id, operation.lock_type, operation.record, operation.table, transaction)
         self.list_of_locks.append(lock)
 
+    def has_lock(self, operation: Operation, transaction: Transaction):
+        for lock in self.list_of_locks:
+            if lock.transaction == transaction and lock.record == operation.record:
+                if lock.lock_type == LockType.WRITE:
+                    return True
+                elif lock.lock_type == LockType.READ and operation.lock_type == LockType.READ:
+                    return True
+        return False
+
     def try_to_acquire_lock(self, operation: Operation, transaction: Transaction):
         with mutex:
-            if self.can_acquire_lock(operation):
+            if self.has_lock(operation, transaction):
+                return True
+            elif self.can_acquire_lock(operation):
                 self.acquire_lock(operation, transaction)
 
                 return True
-            elif self.can_upgrade_lock(operation):
+            elif self.can_upgrade_lock(operation, transaction):
 
                 return True
         return False
@@ -101,8 +116,8 @@ class Service:
     def begin_transaction(self, transaction: Transaction):
         successful_operations = []
         for operation in transaction.list_of_operations:
-            # if operation.operation_type == OperationType.ADD:
-            #     time.sleep(10)
+            if operation.operation_type == OperationType.ADD:
+                time.sleep(5)
             while True:
                 print(threading.currentThread())
                 # TODO if transaction is paused because it needs to wait add it to deadlock prevention graph
@@ -111,15 +126,19 @@ class Service:
                     successful_operations.append(operation.get_inverse_operation())
                     break
                 else:
-                    # list_of_blocking_transactions = self.get_blocking_transactions(operation)
-                    # for blocking_transaction in list_of_blocking_transactions:
-                    #     with mutex:
-                    #         self.graph_for_deadlock_prevention.add_node(transaction, blocking_transaction)
-                    #
-                    # cyclic_nodes = self.graph_for_deadlock_prevention.is_cyclic(transaction)
-                    # if cyclic_nodes is not False and cyclic_nodes[0] == transaction.transaction_id:
-                    #     transaction.status = Status.ABORT
-                    #     break
+                    list_of_blocking_transactions = self.get_blocking_transactions(operation)
+                    for blocking_transaction in list_of_blocking_transactions:
+                        with mutex:
+                            self.graph_for_deadlock_prevention.add_node(transaction, blocking_transaction)
+
+                    with mutex:
+                        cyclic_nodes = self.graph_for_deadlock_prevention.is_cyclic(transaction)
+                        if type(cyclic_nodes) is list:
+                            cyclic_nodes.sort()
+                        if cyclic_nodes is not False and transaction.transaction_id == cyclic_nodes[-1]:
+                            transaction.status = Status.ABORT
+                            self.graph_for_deadlock_prevention.remove_node(transaction)
+                            break
                     print(str(threading.currentThread()) + " can't acquire lock, waiting")
                     time.sleep(1)
 
@@ -131,6 +150,7 @@ class Service:
             time.sleep(1)
 
             transaction.data_dict = {}
+            transaction.status = Status.ACTIVE
             self.begin_transaction(transaction)
         else:
             transaction.status = Status.COMMIT
@@ -138,6 +158,8 @@ class Service:
 
     def return_book(self, user_id, book_id):
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=user_id)
         operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=book_id)
         operation3 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.SELECT, object=(user_id, book_id))
@@ -151,19 +173,23 @@ class Service:
         self.begin_transaction(transaction)
 
     def dummy_transaction1(self):
-        self.book_db = BookDatabase()
-        self.user_db = UserDatabase()
+        # self.book_db = BookDatabase()
+        # self.user_db = UserDatabase()
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=1)
-        operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.ADD, object=Book(1, 1, 1, 1, 1, 1, book_id=99))
+        operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.ADD, object=Book(1, 1, 2, 2, 2, 2, book_id=99))
         list_of_operations = [operation1, operation2]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
     def dummy_transaction2(self):
-        self.book_db = BookDatabase()
-        self.user_db = UserDatabase()
+        # self.book_db = BookDatabase()
+        # self.user_db = UserDatabase()
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=1)
         operation2 = Operation(Table.USER, Record.USER, OperationType.ADD,
                                object=User('2', '2', 'Aku', 'aaaa@gmail.com', '0744444444', user_id=99))

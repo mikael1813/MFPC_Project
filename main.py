@@ -24,11 +24,13 @@ if __name__ == '__main__':
     service = Service()
     th1 = Thread(target=service.dummy_transaction1)
     th2 = Thread(target=service.dummy_transaction2)
-    # th1.start()
-    # th2.start()
-    #
-    # th1.join()
-    # th2.join()
+    th1.start()
+    th2.start()
+
+    th1.join()
+    th2.join()
+
+    # service.dummy_transaction2()
     # service.return_book(user.user_id, book.book_id)
     for user in user_db.get_users():
         print(user)

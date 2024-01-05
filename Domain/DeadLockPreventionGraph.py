@@ -14,14 +14,22 @@ class DeadLockPreventionGraph:
 
     def add_node(self, transaction: Transaction, wait_for_transaction: Transaction = None):
         if wait_for_transaction is None:
-            self.adjacency_dict[transaction.transaction_id] = []
+            # self.adjacency_dict[transaction.transaction_id] = []
+            return
         else:
             if transaction.transaction_id not in self.adjacency_dict.keys():
                 self.adjacency_dict[transaction.transaction_id] = [wait_for_transaction.transaction_id]
-            else:
+            elif wait_for_transaction.transaction_id not in self.adjacency_dict[transaction.transaction_id]:
                 self.adjacency_dict[transaction.transaction_id].append(wait_for_transaction.transaction_id)
             if wait_for_transaction.transaction_id not in self.adjacency_dict.keys():
                 self.adjacency_dict[wait_for_transaction.transaction_id] = []
+
+    def remove_node(self, transaction: Transaction):
+        if transaction.transaction_id in self.adjacency_dict.keys():
+            self.adjacency_dict.pop(transaction.transaction_id)
+        for key in self.adjacency_dict.keys():
+            if transaction.transaction_id in self.adjacency_dict[key]:
+                self.adjacency_dict[key].remove(transaction.transaction_id)
 
     def is_cyclic(self, transaction: Transaction = None):
         visited = set()

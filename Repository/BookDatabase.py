@@ -7,7 +7,7 @@ from Domain.Author import Author
 
 class BookDatabase:
     def __init__(self):
-        self.connection = sqlite3.connect('book.db')
+        self.connection = sqlite3.connect('book.db', check_same_thread=False)
         self.init_book_table()
         self.init_book_review_table()
         self.init_author_table()

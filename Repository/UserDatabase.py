@@ -6,7 +6,7 @@ from Domain.UserFine import UserFine
 
 class UserDatabase:
     def __init__(self):
-        self.connection = sqlite3.connect('user.db')
+        self.connection = sqlite3.connect('user.db', check_same_thread=False)
         self.init_user_table()
         self.init_user_borrowed_book_table()
         self.init_user_fines_table()
