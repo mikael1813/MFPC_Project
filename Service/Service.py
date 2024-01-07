@@ -162,7 +162,7 @@ class Service:
             self.release_locks(transaction)
 
     def return_book(self, user_id, book_id):
-        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=user_id)
@@ -178,7 +178,7 @@ class Service:
         self.begin_transaction(transaction)
 
     def borrow_book(self, user_id, book_id, number_of_days=30):
-        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=user_id)
@@ -191,12 +191,51 @@ class Service:
         self.begin_transaction(transaction)
 
     def add_new_book_and_author(self, new_book: Book, new_author: Author):
-        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
         operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.ADD, object=new_book)
-        operation2 = Operation(Table.BOOK, Record.AUTHOR, OperationType.ADD, object=new_author)
+        if new_author is not None:
+            operation2 = Operation(Table.BOOK, Record.AUTHOR, OperationType.ADD, object=new_author)
+            transaction.list_of_operations = [operation1, operation2]
+        else:
+            transaction.list_of_operations = [operation1]
+        self.begin_transaction(transaction)
+
+    def get_books_by_author(self, author_id):
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=author_id)
+        list_of_operations = [operation1]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def get_borrowed_books_by_user(self, user_id):
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.SELECT, object=user_id)
+        operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=None)
         list_of_operations = [operation1, operation2]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def update_user(self, new_user: User):
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.USER, Record.USER, OperationType.UPDATE, object=new_user)
+        list_of_operations = [operation1]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def add_user(self, new_user: User):
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.USER, Record.USER, OperationType.ADD, object=new_user)
+        list_of_operations = [operation1]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
