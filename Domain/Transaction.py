@@ -1,4 +1,6 @@
+import json
 from enum import Enum
+
 from Domain.Operation import Operation
 
 
@@ -16,10 +18,15 @@ class Transaction:
         self.list_of_operations = list_of_operations
         self.data_dict = {}
 
-    def jsonify(self):
+    def __dict__(self):
         return {
             'transaction_id': self.transaction_id,
             'timestamp': self.timestamp,
             'status': self.status.name,
-            'list_of_operations': [operation.jsonify() for operation in self.list_of_operations]
+            'list_of_operations': [operation.__dict__() for operation in self.list_of_operations]
         }
+
+    def __str__(self):
+        # return json string of object
+        return json.dumps(self.__dict__())
+

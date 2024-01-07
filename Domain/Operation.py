@@ -1,3 +1,5 @@
+import json
+
 from Domain.Enums import OperationType, LockType
 
 
@@ -26,3 +28,15 @@ class Operation:
         inverse_operation = Operation(self.table, self.record, inverse_operation_type, object=self.object,
                                       prev_object=self.prev_object)
         return inverse_operation
+
+    def __dict__(self):
+        return {
+            'table': self.table,
+            'record': self.record,
+            'operation_type': self.operation_type.name,
+            'object': self.object.__dict__(),
+            'prev_object': self.prev_object.__dict__()
+        }
+
+    def __str__(self):
+        return json.dumps(self.__dict__())

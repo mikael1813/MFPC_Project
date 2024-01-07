@@ -1,8 +1,9 @@
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from threading import Lock
 
+from Domain.Author import Author
 from Domain.Book import Book
 from Domain.CustomLock import CustomLock
 from Domain.DeadLockPreventionGraph import DeadLockPreventionGraph
@@ -173,6 +174,29 @@ class Service:
         operation5 = Operation(Table.USER, Record.USER_FINE, OperationType.ADD)
 
         list_of_operations = [operation1, operation2, operation3, operation4, operation5]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def borrow_book(self, user_id, book_id, number_of_days=30):
+        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=user_id)
+        operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=book_id)
+        operation3 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.ADD,
+                               object=UserBorrowedBook(user_id, book_id, borrow_date=datetime.now(),
+                                                       due_date=datetime.now() + timedelta(number_of_days)))
+        list_of_operations = [operation1, operation2, operation3]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+    def add_new_book_and_author(self, new_book: Book, new_author: Author):
+        transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.ADD, object=new_book)
+        operation2 = Operation(Table.BOOK, Record.AUTHOR, OperationType.ADD, object=new_author)
+        list_of_operations = [operation1, operation2]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
