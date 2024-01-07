@@ -172,8 +172,9 @@ class Service:
                                object=UserBorrowedBook(user_id, book_id, return_date=datetime.now()),
                                prev_object=None)
         operation5 = Operation(Table.USER, Record.USER_FINE, OperationType.ADD)
+        operation6 = Operation(Table.USER, Record.USER_FINE, OperationType.SELECT, object=user_id)
 
-        list_of_operations = [operation1, operation2, operation3, operation4, operation5]
+        list_of_operations = [operation1, operation2, operation3, operation4, operation5, operation6]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
@@ -202,7 +203,7 @@ class Service:
             transaction.list_of_operations = [operation1]
         self.begin_transaction(transaction)
 
-    def get_books_by_author(self, author_id):
+    def get_books_by_author(self, author_id=None):
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
