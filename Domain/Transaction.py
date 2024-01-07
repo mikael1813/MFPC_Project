@@ -15,3 +15,11 @@ class Transaction:
         self.status = status
         self.list_of_operations = list_of_operations
         self.data_dict = {}
+
+    def jsonify(self):
+        return {
+            'transaction_id': self.transaction_id,
+            'timestamp': self.timestamp,
+            'status': self.status.name,
+            'list_of_operations': [operation.jsonify() for operation in self.list_of_operations]
+        }

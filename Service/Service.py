@@ -115,15 +115,19 @@ class Service:
 
     def begin_transaction(self, transaction: Transaction):
         successful_operations = []
+        # reverse_transaction = Transaction(transaction.transaction_id, transaction.timestamp, transaction.status,
+        #                                   [])
         for operation in transaction.list_of_operations:
             if operation.operation_type == OperationType.ADD:
                 time.sleep(5)
             while True:
                 print(threading.currentThread())
-                # TODO if transaction is paused because it needs to wait add it to deadlock prevention graph
+                # TODO reverse transaction for versioning
                 if self.try_to_acquire_lock(operation, transaction):
                     self.start_operation(operation, transaction)
-                    successful_operations.append(operation.get_inverse_operation())
+                    inverse_operation = operation.get_inverse_operation()
+                    successful_operations.append(inverse_operation)
+                    # reverse_transaction.list_of_operations.append(inverse_operation)
                     break
                 else:
                     list_of_blocking_transactions = self.get_blocking_transactions(operation)
@@ -173,8 +177,6 @@ class Service:
         self.begin_transaction(transaction)
 
     def dummy_transaction1(self):
-        # self.book_db = BookDatabase()
-        # self.user_db = UserDatabase()
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
@@ -185,8 +187,6 @@ class Service:
         self.begin_transaction(transaction)
 
     def dummy_transaction2(self):
-        # self.book_db = BookDatabase()
-        # self.user_db = UserDatabase()
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
