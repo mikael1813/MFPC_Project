@@ -13,7 +13,7 @@ from Domain.Transaction import Transaction, Status
 from Domain.User import User
 from Domain.UserBorrowedBook import UserBorrowedBook
 from Domain.UserFine import UserFine
-from Domain.constants import users, user, books, book, borrowed_book, returned_book
+from Domain.constants import users, user, books, book, borrowed_book, returned_book, borrowed_books
 from Repository.BookDatabase import BookDatabase
 from Repository.UserDatabase import UserDatabase
 
@@ -207,27 +207,47 @@ class Service:
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
-        operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=author_id)
+        operation1 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=None)
         list_of_operations = [operation1]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
+
+        list_of_books = []
+
+        for book in transaction.data_dict[books]:
+            if book.author_id == author_id:
+                list_of_books.append(book)
 
     def get_borrowed_books_by_user(self, user_id):
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
-        operation1 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.SELECT, object=user_id)
+        operation1 = Operation(Table.USER, Record.USER_BORROWED_BOOK, OperationType.SELECT, object=None)
         operation2 = Operation(Table.BOOK, Record.BOOK, OperationType.SELECT, object=None)
         list_of_operations = [operation1, operation2]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
+        list_of_user_borrows = []
+        list_of_books = []
+
+        for borrow in transaction.data_dict[borrowed_books]:
+            if borrow.user_id == user_id:
+                list_of_user_borrows.append(borrow)
+
+        for i in range(len(list_of_user_borrows)):
+            for book in transaction.data_dict[books]:
+                if book.book_id == list_of_user_borrows[i].book_id:
+                    list_of_books.append(book)
+                    break
+
     def update_user(self, new_user: User):
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
         with mutex:
             self.list_of_transactions.append(transaction)
-        operation1 = Operation(Table.USER, Record.USER, OperationType.UPDATE, object=new_user)
-        list_of_operations = [operation1]
+        operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=new_user.user_id)
+        operation2 = Operation(Table.USER, Record.USER, OperationType.UPDATE, object=new_user)
+        list_of_operations = [operation1, operation2]
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
@@ -270,6 +290,9 @@ class Service:
                     transaction.data_dict[user] = self.get_user(operation.object)
             elif operation.operation_type == OperationType.ADD:
                 self.user_db.add_user(operation.object)
+            elif operation.operation_type == OperationType.UPDATE:
+                operation.prev_object = transaction.data_dict[user]
+                self.user_db.update_user(operation.object)
         elif operation.record == Record.BOOK:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:
@@ -281,8 +304,7 @@ class Service:
         elif operation.record == Record.USER_BORROWED_BOOK:
             if operation.operation_type == OperationType.SELECT:
                 if operation.object is None:
-                    pass
-                    # transaction.data_dict[borrowed_books] = self.get_all_users()
+                    transaction.data_dict[borrowed_books] = self.get_user_borrows_book()
                 else:
                     transaction.data_dict[borrowed_book] = self.get_borrowed_book(operation.object[0],
                                                                                   operation.object[1])
@@ -292,11 +314,20 @@ class Service:
                 operation.object.return_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 transaction.data_dict[returned_book] = operation.object
                 self.update_borrow_book(operation.object)
+            elif operation.operation_type == OperationType.ADD:
+                self.user_db.add_user_borrowed_book(operation.object)
 
         elif operation.record == Record.USER_FINE:
             if operation.operation_type == OperationType.ADD:
                 user_returned_book: UserBorrowedBook = transaction.data_dict[returned_book]
                 self.check_for_user_fine(user_returned_book)
+
+        elif operation.record == Record.AUTHOR:
+            if operation.operation_type == OperationType.ADD:
+                self.book_db.add_author(operation.object)
+
+    def get_user_borrows_book(self):
+        return self.user_db.get_user_borrows_book()
 
     def get_all_users(self):
         return self.user_db.get_users()

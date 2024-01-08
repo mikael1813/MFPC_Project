@@ -17,16 +17,18 @@ class Operation:
         self.prev_object = prev_object
 
     def get_inverse_operation(self):
-        if self.operation_type == OperationType.ADD:
-            inverse_operation_type = OperationType.DELETE
-        elif self.operation_type == OperationType.UPDATE:
-            inverse_operation_type = OperationType.UPDATE
-        elif self.operation_type == OperationType.DELETE:
-            inverse_operation_type = OperationType.ADD
-        else:
-            inverse_operation_type = None
-        inverse_operation = Operation(self.table, self.record, inverse_operation_type, object=self.object,
+        inverse_operation = Operation(self.table, self.record, None, object=self.object,
                                       prev_object=self.prev_object)
+        if self.operation_type == OperationType.ADD:
+            inverse_operation.operation_type = OperationType.DELETE
+        elif self.operation_type == OperationType.UPDATE:
+            inverse_operation.operation_type = OperationType.UPDATE
+            aux = self.object
+            inverse_operation.object = self.prev_object
+            inverse_operation.prev_object = aux
+        elif self.operation_type == OperationType.DELETE:
+            inverse_operation.operation_type = OperationType.ADD
+
         return inverse_operation
 
     def __dict__(self):

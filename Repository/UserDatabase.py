@@ -62,6 +62,13 @@ class UserDatabase:
         self.connection.commit()
         cursor.close()
 
+    def update_user(self, user: User):
+        cursor = self.connection.cursor()
+        cursor.execute("UPDATE users SET username = ?, password = ?, full_name = ?, email = ? WHERE user_id = ?;",
+                       (user.username, user.password, user.full_name, user.email, user.user_id))
+        self.connection.commit()
+        cursor.close()
+
     def get_users(self):
         cursor = self.connection.cursor()
         cursor.execute("SELECT * FROM users;")
