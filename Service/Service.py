@@ -24,11 +24,13 @@ class Service:
     def __init__(self):
         self.book_db = BookDatabase()
         self.user_db = UserDatabase()
+        self.versioning_index = -1
         # t1 = Transaction(1, 0, Status.ACTIVE, [])
         # self.list_of_transactions = [t1]
         # self.list_of_locks = [
         #     CustomLock(1, LockType.READ, Record.BOOK, Table.BOOK, t1)]
         self.list_of_transactions = []
+        self.list_of_reverse_transactions = []
         self.list_of_locks = []
         self.graph_for_deadlock_prevention = DeadLockPreventionGraph()
         self.fine_rate = 10  # USD per day
@@ -114,10 +116,33 @@ class Service:
                 return True
         return False
 
-    def begin_transaction(self, transaction: Transaction):
+    def find_reverse_transaction(self, transaction):
+        for reverse_transaction in self.list_of_reverse_transactions:
+            if reverse_transaction.transaction_id == transaction.transaction_id:
+                return reverse_transaction
+
+    def undo(self):
+        if abs(self.versioning_index) <= len(self.list_of_transactions):
+            last_committed_transaction = self.list_of_transactions[self.versioning_index]
+            reverse_transaction = self.find_reverse_transaction(last_committed_transaction)
+            self.versioning_index -= 1
+            self.begin_transaction(reverse_transaction, reversible=False)
+        else:
+            print("Earliest")
+
+    def redo(self):
+        if self.versioning_index < -1:
+            transaction = self.list_of_transactions[self.versioning_index]
+            self.versioning_index += 1
+            self.begin_transaction(transaction, reversible=False)
+        else:
+            print("Latest")
+
+    def begin_transaction(self, transaction: Transaction, reversible=True):
         successful_operations = []
-        # reverse_transaction = Transaction(transaction.transaction_id, transaction.timestamp, transaction.status,
-        #                                   [])
+        if reversible:
+            reverse_transaction = Transaction(transaction.transaction_id, transaction.timestamp, transaction.status,
+                                              [])
         for operation in transaction.list_of_operations:
             if operation.operation_type == OperationType.ADD:
                 time.sleep(5)
@@ -128,7 +153,8 @@ class Service:
                     self.start_operation(operation, transaction)
                     inverse_operation = operation.get_inverse_operation()
                     successful_operations.append(inverse_operation)
-                    # reverse_transaction.list_of_operations.append(inverse_operation)
+                    if reversible:
+                        reverse_transaction.list_of_operations.append(inverse_operation)
                     break
                 else:
                     list_of_blocking_transactions = self.get_blocking_transactions(operation)
@@ -156,9 +182,14 @@ class Service:
 
             transaction.data_dict = {}
             transaction.status = Status.ACTIVE
+            with mutex:
+                self.list_of_transactions.remove(transaction)
+                self.list_of_transactions.append(transaction)
             self.begin_transaction(transaction)
         else:
             transaction.status = Status.COMMIT
+            reverse_transaction.list_of_operations = reversed(reverse_transaction.list_of_operations)
+            self.list_of_reverse_transactions.append(reverse_transaction)
             self.release_locks(transaction)
 
     def return_book(self, user_id, book_id):
