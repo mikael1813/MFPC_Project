@@ -291,6 +291,23 @@ class Service:
         transaction.list_of_operations = list_of_operations
         self.begin_transaction(transaction)
 
+    def login(self, username, password):
+        transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
+        with mutex:
+            self.list_of_transactions.append(transaction)
+        operation1 = Operation(Table.USER, Record.USER, OperationType.SELECT, object=None)
+        list_of_operations = [operation1]
+        transaction.list_of_operations = list_of_operations
+        self.begin_transaction(transaction)
+
+        list_of_users = transaction.data_dict[users]
+
+        for u in list_of_users:
+            if u.username == username and u.password == password:
+                return u.user_id
+
+        return False
+
     def dummy_transaction1(self):
         transaction = Transaction(self.generate_transaction_id(), 0, Status.ACTIVE, [])
         with mutex:

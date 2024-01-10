@@ -1,3 +1,4 @@
+from Domain.Author import Author
 from Repository.BookDatabase import BookDatabase
 from Repository.UserDatabase import UserDatabase
 from Domain.User import User
@@ -7,9 +8,11 @@ from Service.Service import Service
 
 import json
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from threading import Thread
 
 app = Flask(__name__)
+CORS(app)
 service = Service()
 
 
@@ -40,6 +43,8 @@ def add_new_book_and_author():
 
     new_author = request.args.get('new_author')
 
+    new_author = Author(new_author['author_name'], author_id=new_author['author_id'])
+
     service.add_new_book_and_author(new_book, new_author)
 
 
@@ -61,6 +66,9 @@ def get_borrowed_books_by_user():
 def update_user():
     new_user = request.args.get('user')
 
+    new_user = User(new_user['username'], new_user['password'], new_user['full_name'], new_user['email'],
+                    new_user['phone'], user_id=new_user['user_id'])
+
     service.update_user(new_user)
 
 
@@ -68,13 +76,31 @@ def update_user():
 def add_user():
     new_user = request.args.get('user')
 
+    new_user = User(new_user['username'], new_user['password'], new_user['full_name'], new_user['email'],
+                    new_user['phone'])
+
     service.add_user(new_user)
 
 
-if __name__ == '__main__':
+@app.route('/')
+def home():
+    return 'Hello, World!'
 
-    app.run(debug=True)
 
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.json['username']
+    password = request.json['password']
+
+    login_output = service.login(username, password)
+
+    if not login_output:
+        return jsonify({'message': 'Wrong credentials'}), 401
+    else:
+        return jsonify({'user_id': str(login_output)}), 200
+
+
+def testing():
     book_db = BookDatabase()
     user_db = UserDatabase()
 
@@ -88,14 +114,13 @@ if __name__ == '__main__':
     # book_db.add_book(book)
     # user_db.add_user_borrowed_book(UserBorrowedBook(1, 1, due_date='2023-12-15 10:05:23'))
 
-    service = Service()
-    th1 = Thread(target=service.dummy_transaction1)
-    th2 = Thread(target=service.dummy_transaction2)
-    th1.start()
-    th2.start()
-
-    th1.join()
-    th2.join()
+    # th1 = Thread(target=service.dummy_transaction1)
+    # th2 = Thread(target=service.dummy_transaction2)
+    # th1.start()
+    # th2.start()
+    #
+    # th1.join()
+    # th2.join()
 
     # service.dummy_transaction2()
     # service.return_book(user.user_id, book.book_id)
@@ -107,3 +132,11 @@ if __name__ == '__main__':
         print(review)
     for user_fine in user_db.get_users_fines():
         print(user_fine)
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+    # service.add_user(User("kelu", "pass", "Kelu", "mail", "phone"))
+
+    # testing()
