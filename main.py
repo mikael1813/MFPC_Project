@@ -5,9 +5,76 @@ from Domain.Book import Book
 from Domain.UserBorrowedBook import UserBorrowedBook
 from Service.Service import Service
 
+import json
+from flask import Flask, request, jsonify
 from threading import Thread
 
+app = Flask(__name__)
+service = Service()
+
+
+@app.route('/return_book', methods=['POST'])
+def return_book():
+    user_id = request.args.get('user_id')
+    book_id = request.args.get('book_id')
+
+    service.return_book(user_id, book_id)
+
+
+@app.route('/borrow_book', methods=['POST'])
+def borrow_book():
+    user_id = request.args.get('user_id')
+    book_id = request.args.get('book_id')
+    number_of_days = request.args.get('number_of_days')
+
+    service.borrow_book(user_id, book_id, number_of_days=number_of_days)
+
+
+@app.route('/add_new_book_and_author', methods=['POST'])
+def add_new_book_and_author():
+    new_book = request.args.get('new_book')
+
+    new_book = Book(new_book['title'], new_book['author_id'], new_book['isbn'], new_book['public_year'],
+                    new_book['genre'],
+                    new_book['total_copies'], book_id=new_book['book_id'])
+
+    new_author = request.args.get('new_author')
+
+    service.add_new_book_and_author(new_book, new_author)
+
+
+@app.route('/get_books_by_author', methods=['POST'])
+def get_books_by_author():
+    author_id = request.args.get('user_id')
+
+    service.get_books_by_author(author_id)
+
+
+@app.route('/get_borrowed_books_by_user', methods=['POST'])
+def get_borrowed_books_by_user():
+    user_id = request.args.get('user_id')
+
+    service.get_borrowed_books_by_user(user_id)
+
+
+@app.route('/user', methods=['PUT'])
+def update_user():
+    new_user = request.args.get('user')
+
+    service.update_user(new_user)
+
+
+@app.route('/user', methods=['POST'])
+def add_user():
+    new_user = request.args.get('user')
+
+    service.add_user(new_user)
+
+
 if __name__ == '__main__':
+
+    app.run(debug=True)
+
     book_db = BookDatabase()
     user_db = UserDatabase()
 
