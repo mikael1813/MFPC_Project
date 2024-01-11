@@ -2,13 +2,13 @@ import json
 
 
 class User:
-    def __init__(self, username, password, full_name, email, phone, user_id=-1):
-        self.user_id = user_id
+    def __init__(self, username, password, full_name, email, registration_date=None, user_id=-1):
+        self.user_id = int(user_id)
         self.username = username
         self.password = password
         self.full_name = full_name
         self.email = email
-        self.phone = phone
+        self.registration_date = registration_date
 
     def __dict__(self):
         # return dictionary of author object
@@ -18,7 +18,7 @@ class User:
             'password': self.password,
             'full_name': self.full_name,
             'email': self.email,
-            'phone': self.phone
+            'registration_date': self.registration_date
         }
 
     def __str__(self):

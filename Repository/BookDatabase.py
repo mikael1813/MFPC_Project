@@ -87,3 +87,13 @@ class BookDatabase:
                        (author.name,))
         self.connection.commit()
         cursor.close()
+
+    def get_authors(self):
+        cursor = self.connection.cursor()
+        cursor.execute("SELECT * FROM authors;")
+        result = cursor.fetchall()
+        cursor.close()
+        output_list = []
+        for author in result:
+            output_list.append(Author(author[1], author_id=author[0]))
+        return output_list

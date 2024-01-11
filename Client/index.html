@@ -45,6 +45,14 @@
         button:hover {
             background-color: #45a049;
         }
+
+        /* New styles for the bottom left positioning */
+        p {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            margin: 10px;
+        }
     </style>
 </head>
 <body>
@@ -59,37 +67,11 @@
     <button type="button" onclick="attemptLogin()">Login</button>
 </form>
 
-<script>
-    function attemptLogin() {
-        var username = document.getElementById('username').value;
-        var password = document.getElementById('password').value;
+<p>
+    <a href="add_user.html">Add a user</a>
+</p>
 
-        fetch('http://127.0.0.1:5000/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                username: username,
-                password: password,
-            }),
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Invalid username or password');
-            }
-            alert(response.json());
-            return response.json();
-        })
-        .then(data => {
-            alert('Login successful!');
-            // You can redirect or perform other actions upon successful login
-        })
-        .catch(error => {
-            alert(error.message);
-        });
-    }
-</script>
+<script src="logic.js"></script>
 
 </body>
 </html>

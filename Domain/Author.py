@@ -4,7 +4,7 @@ import json
 class Author:
     def __init__(self, name, author_id=-1):
         self.name = name
-        self.author_id = author_id
+        self.author_id = int(author_id)
 
     def __dict__(self):
         # return dictionary of author object

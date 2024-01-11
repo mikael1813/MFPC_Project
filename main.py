@@ -18,30 +18,46 @@ service = Service()
 
 @app.route('/return_book', methods=['POST'])
 def return_book():
-    user_id = request.args.get('user_id')
-    book_id = request.args.get('book_id')
+    user_id = int((request.json['user_id']))
+    book_id = int((request.json['book_id']))
 
+    # try:
     service.return_book(user_id, book_id)
+    # except Exception as e:
+    #     print(e)
+    #     return jsonify({'message': 'Some error occured'}), 400
+
+    return jsonify({'message': 'Book returned successfully'}), 200
 
 
 @app.route('/borrow_book', methods=['POST'])
 def borrow_book():
-    user_id = request.args.get('user_id')
-    book_id = request.args.get('book_id')
-    number_of_days = request.args.get('number_of_days')
+    user_id = int(request.json['user_id'])
+    book_id = int(request.json['book_id'])
+    number_of_days = None
+    if 'number_of_days' in request.json:
+        number_of_days = request.json['number_of_days']
 
-    service.borrow_book(user_id, book_id, number_of_days=number_of_days)
+    try:
+        if number_of_days is None:
+            service.borrow_book(user_id, book_id)
+        else:
+            service.borrow_book(user_id, book_id, number_of_days=number_of_days)
+    except:
+        return jsonify({'message': 'Book already borrowed'}), 400
+
+    return jsonify({'message': 'Book borrowed successfully'}), 200
 
 
 @app.route('/add_new_book_and_author', methods=['POST'])
 def add_new_book_and_author():
-    new_book = request.args.get('new_book')
+    new_book = request.json['new_book']
 
     new_book = Book(new_book['title'], new_book['author_id'], new_book['isbn'], new_book['public_year'],
                     new_book['genre'],
                     new_book['total_copies'], book_id=new_book['book_id'])
 
-    new_author = request.args.get('new_author')
+    new_author = request.json['new_author']
 
     new_author = Author(new_author['author_name'], author_id=new_author['author_id'])
 
@@ -50,36 +66,53 @@ def add_new_book_and_author():
 
 @app.route('/get_books_by_author', methods=['POST'])
 def get_books_by_author():
-    author_id = request.args.get('user_id')
+    author_id = int(request.json['author_id'])
 
-    service.get_books_by_author(author_id)
+    if int(author_id) < 0:
+        books = service.get_books_by_author()
+    else:
+        books = service.get_books_by_author(int(author_id))
+
+    return jsonify({'books': [book.__dict__() for book in books]})
 
 
 @app.route('/get_borrowed_books_by_user', methods=['POST'])
 def get_borrowed_books_by_user():
-    user_id = request.args.get('user_id')
+    user_id = int(request.json['user_id'])
 
-    service.get_borrowed_books_by_user(user_id)
+    books = service.get_borrowed_books_by_user(user_id)
+
+    return jsonify({'books': [book.__dict__() for book in books]})
 
 
 @app.route('/user', methods=['PUT'])
 def update_user():
-    new_user = request.args.get('user')
+    new_user = request.json['user']
 
     new_user = User(new_user['username'], new_user['password'], new_user['full_name'], new_user['email'],
-                    new_user['phone'], user_id=new_user['user_id'])
+                    registration_date=None, user_id=new_user['user_id'])
 
-    service.update_user(new_user)
+    try:
+        service.update_user(new_user)
+    except:
+        return jsonify('Email already used'), 400
+
+    return jsonify({'message': 'User updated successfully'}), 200
 
 
 @app.route('/user', methods=['POST'])
 def add_user():
-    new_user = request.args.get('user')
+    new_user = request.json['user']
 
     new_user = User(new_user['username'], new_user['password'], new_user['full_name'], new_user['email'],
-                    new_user['phone'])
+                    registration_date=None)
 
-    service.add_user(new_user)
+    try:
+        service.add_user(new_user)
+    except Exception as e:
+        return jsonify('Email already used'), 400
+
+    return jsonify({'message': 'User added successfully'}), 201
 
 
 @app.route('/')

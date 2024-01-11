@@ -245,9 +245,14 @@ class Service:
 
         list_of_books = []
 
+        if author_id is None:
+            return transaction.data_dict[books]
+
         for book in transaction.data_dict[books]:
             if book.author_id == author_id:
                 list_of_books.append(book)
+
+        return list_of_books
 
     def get_borrowed_books_by_user(self, user_id):
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
@@ -268,9 +273,11 @@ class Service:
 
         for i in range(len(list_of_user_borrows)):
             for book in transaction.data_dict[books]:
-                if book.book_id == list_of_user_borrows[i].book_id:
+                if book.book_id == list_of_user_borrows[i].book_id and list_of_user_borrows[i].return_date is None:
                     list_of_books.append(book)
                     break
+
+        return list_of_books
 
     def update_user(self, new_user: User):
         transaction = Transaction(self.generate_transaction_id(), datetime.now(), Status.ACTIVE, [])
@@ -403,6 +410,7 @@ class Service:
 
     def check_for_user_fine(self, user_borrowed_book: UserBorrowedBook):
         return_date = datetime.strptime(user_borrowed_book.return_date, '%Y-%m-%d %H:%M:%S')
+        user_borrowed_book.due_date = user_borrowed_book.due_date.split('.')[0]
         due_date = datetime.strptime(user_borrowed_book.due_date, '%Y-%m-%d %H:%M:%S')
 
         if return_date > due_date:

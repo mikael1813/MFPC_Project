@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book List</title>
+</head>
+<body>
+
+<h1>Book List</h1>
+
+<button onclick="getBooks()">Get Books</button>
+<button onclick="getBorrowedBooks()">Get Borrowed Books</button>
+<input type="number" id="author_id" value="-1">
+<ul id="bookList"></ul>
+
+<p>
+   <button onclick="changePageToUpdateUser()">Update user</button>
+</p>
+<p>
+   <button onclick="borrowBook()">Borrow book</button>
+</p>
+<p>
+   <button onclick="returnBook()">Return book</button>
+</p>
+
+<script src="logic.js"></script>

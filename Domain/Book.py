@@ -3,7 +3,7 @@ import json
 
 class Book:
     def __init__(self, title, author_id, isbn, publish_year, genre, total_copies, book_id=-1):
-        self.book_id = book_id
+        self.book_id = int(book_id)
         self.title = title
         self.author_id = author_id
         self.isbn = isbn
