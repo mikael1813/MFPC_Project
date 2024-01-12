@@ -1,3 +1,5 @@
+import threading
+
 from Domain.Author import Author
 from Repository.BookDatabase import BookDatabase
 from Repository.UserDatabase import UserDatabase
@@ -122,6 +124,7 @@ def home():
 
 @app.route('/login', methods=['POST'])
 def login():
+    print(threading.current_thread().name)
     username = request.json['username']
     password = request.json['password']
 
